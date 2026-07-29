@@ -63,6 +63,6 @@ export const authorize = (...roles) => {
       });
     }
 
-    next();
+    next(); 
   };
-};
+}; 
