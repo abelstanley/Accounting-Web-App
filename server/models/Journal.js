@@ -58,6 +58,21 @@ const journalSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    isReversal: {
+      type: Boolean,
+      default: false,
+    },
+
+    reversedJournal: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Journal",
+      default: null,
+    },
+    reversedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Journal",
+      default: null,
+    },
   },
   {
     timestamps: true,
