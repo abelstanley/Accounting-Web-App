@@ -34,8 +34,6 @@ const recalculateLedgerBalances = async (accountId, session) => {
         await entry.save({ session });
     }
 };
-
-
 // Controller function to handle posting a journal and ledger entry
 export const postJournal = async (req, res, next) => {
     const session = await mongoose.startSession();
@@ -281,4 +279,144 @@ export const reverseJournal = async (req, res, next) => {
     } finally {
         await session.endSession();
     }
-}; 
+};
+
+// Controller function to edit a journal
+export const editJournal = async (req, res, next) => {
+    const session = await mongoose.startSession();
+
+    try {
+        session.startTransaction();
+
+        const { journalId } = req.params;
+
+        // Find the journal to edit
+        const journal = await Journal.findById(journalId).session(session);
+
+        if (!journal) {
+            await session.abortTransaction();
+
+            return res.status(404).json({
+                success: false,
+                message: "Journal not found.",
+            });
+        }
+
+        // Only draft journals can be edited
+        if (journal.status !== "Draft") {
+            await session.abortTransaction();
+
+            return res.status(400).json({
+                success: false,
+                message: "Only draft journals can be edited.",
+            });
+        }
+
+        // Reversal journals cannot be edited
+        if (journal.isReversal) {
+            await session.abortTransaction();
+
+            return res.status(400).json({
+                success: false,
+                message: "Reversal journals cannot be edited.",
+            });
+        }
+
+        // Get the updated journal data from the request
+        const { transactionDate, description, lines } = req.body;
+
+        // Validate that the updated journal has at least two lines
+        if (!lines || lines.length < 2) {
+            await session.abortTransaction();
+
+            return res.status(400).json({
+                success: false,
+                message: "A journal entry must contain at least two lines.",
+            });
+        }
+
+        // Validate that each line has either a debit or a credit amount, but not both
+        for (const line of lines) {
+            const debit = Number(line.debit || 0);
+            const credit = Number(line.credit || 0);
+
+            if ((debit > 0 && credit > 0) || (debit === 0 && credit === 0)) {
+                await session.abortTransaction();
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Each journal line must contain either a debit or a credit amount, but not both.",
+                });
+            }
+        }
+
+        // Validate that each account in the updated journal exists
+        for (const line of lines) {
+            if (!mongoose.Types.ObjectId.isValid(line.account)) {
+                await session.abortTransaction();
+
+                return res.status(400).json({
+                    success: false,
+                    message: `Invalid account ID: ${line.account}`,
+                });
+            }
+
+            const account = await Account.findById(line.account).session(session);
+
+            if (!account) {
+                await session.abortTransaction();
+
+                return res.status(400).json({
+                    success: false,
+                    message: `Account not found: ${line.account}`,
+                });
+            }
+        }
+
+        // Calculate total debits and credits
+        const totalDebit = lines.reduce(
+            (sum, line) => sum + Number(line.debit || 0),
+            0
+        );
+
+        const totalCredit = lines.reduce(
+            (sum, line) => sum + Number(line.credit || 0),
+            0
+        );
+
+        // Ensure the updated journal is balanced
+        if (totalDebit !== totalCredit) {
+            await session.abortTransaction();
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Journal entry is not balanced. Total debits must equal total credits.",
+            });
+        }
+
+        // Update the draft journal
+        journal.transactionDate = transactionDate;
+        journal.description = description;
+        journal.lines = lines;
+
+        await journal.save({ session });
+
+                // Commit the changes
+        await session.commitTransaction();
+
+        return res.status(200).json({
+            success: true,
+            message: "Draft journal updated successfully.",
+            data: journal,
+        });
+        
+
+    } catch (error) {
+        await session.abortTransaction();
+        next(error);
+    } finally {
+        await session.endSession();
+    }
+};
