@@ -1,14 +1,21 @@
-import { calculateFormula } from "./services/formulaService.js";
+import { extractVariables } from "./services/formulaService.js";
+import { validateFormulaExpression } from "./services/formulaService.js";
 
-const result = calculateFormula(
-  "ROUND(AVERAGE(REVENUE, SUM(OTHER_REVENUE, EXPENSES), CASH), 2)",
-  {
-    REVENUE: 100000,
-    OTHER_REVENUE: 20000,
-    EXPENSES: 50000,
-    CASH: 30000,
-    
-  }
-);
+const expressions = [
+    "REVENUE - COST_OF_SALES",
+    "ROUND((REVENUE - COST_OF_SALES) / REVENUE * 100, 2)",
+    "IF(PROFIT > 0, PROFIT, 0)",
+    "REVENUE + @@@",
+    "SUM(REVENUE",
+];
 
-console.log(result);
+for (const expression of expressions) {
+    try {
+        validateFormulaExpression(expression);
+
+        console.log(`VALID: ${expression}`);
+    } catch (error) {
+        console.log(`INVALID: ${expression}`);
+        console.log(`Reason: ${error.message}`);
+    }
+}
