@@ -8,6 +8,7 @@ import connectDB from "./config/db.js";
 import morgan from "morgan";
 import errorHandler from "./middleware/errorHandler.js";
 import seedAccounts from "./seeders/accountSeeder.js";
+import reportRoutes from "./routes/reportRoutes.js";
 
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.use(routes);
 app.use("/api/auth", authRoutes);
 app.use("/api/accounting", accountingRoutes);
 app.use("/api/formulas", formulaRoutes);
+app.use("/api/reports", reportRoutes);
 app.use(errorHandler);
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`); 
