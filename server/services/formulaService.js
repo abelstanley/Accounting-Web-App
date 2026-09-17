@@ -70,6 +70,135 @@ export const validateFormulaExpression = (expression) => {
         );
     }
 
+    // Check for expressions ending with an arithmetic operator
+    if (/[+\-*/]$/.test(trimmedExpression)) {
+        throw new Error(
+            "Formula expression cannot end with an arithmetic operator."
+        );
+    }
+
+    // Check for consecutive arithmetic operators, allowing whitespace between them
+    if (/[+\-*/]\s*[+\-*/]/.test(trimmedExpression)) {
+        throw new Error(
+            "Formula expression contains consecutive arithmetic operators."
+        );
+    }
+
+    // Check for empty function arguments
+    if (/\(\s*,|,\s*,|,\s*\)/.test(trimmedExpression)) {
+        throw new Error(
+            "Formula expression contains an empty function argument."
+        );
+    }
+
+    // Check for unsupported functions
+    const supportedFunctions = ["SUM", "AVERAGE", "IF", "ROUND"];
+
+    const functionMatches = trimmedExpression.match(
+        /\b[A-Za-z_][A-Za-z0-9_]*\s*\(/g
+    ) || [];
+
+    for (const functionMatch of functionMatches) {
+        const functionName = functionMatch
+            .replace(/\s*\($/, "")
+            .toUpperCase();
+
+        if (!supportedFunctions.includes(functionName)) {
+            throw new Error(
+                `Unsupported formula function: ${functionName}`
+            );
+        }
+    }
+
+    // Check function argument counts
+    const functionPattern = /\b(SUM|AVERAGE|IF|ROUND)\s*\(([^()]*)\)/gi;
+
+    let functionMatch;
+
+    while ((functionMatch = functionPattern.exec(trimmedExpression)) !== null) {
+        const functionName = functionMatch[1].toUpperCase();
+
+        const argumentsString = functionMatch[2].trim();
+
+        const argumentsList = argumentsString
+            ? argumentsString.split(",").map((item) => item.trim())
+            : [];
+
+        switch (functionName) {
+            case "SUM":
+            case "AVERAGE":
+                if (argumentsList.length < 1) {
+                    throw new Error(
+                        `${functionName} requires at least one argument.`
+                    );
+                }
+                break;
+
+            case "IF":
+                if (argumentsList.length !== 3) {
+                    throw new Error(
+                        "IF requires exactly three arguments."
+                    );
+                }
+                break;
+
+            case "ROUND":
+                if (argumentsList.length !== 2) {
+                    throw new Error(
+                        "ROUND requires exactly two arguments."
+                    );
+                }
+                break;
+        }
+    }
+
+    // Check for supported functions used without parentheses
+    const malformedFunctionPattern =
+        /\b(SUM|AVERAGE|IF|ROUND)\b(?!\s*\()/gi;
+
+    const malformedFunctionMatch =
+        trimmedExpression.match(malformedFunctionPattern);
+
+    if (malformedFunctionMatch) {
+        throw new Error(
+            `Malformed formula function: ${malformedFunctionMatch[0]}`
+        );
+    }
+
+    // Validate IF conditions
+    const ifPattern = /\bIF\s*\(([^()]*)\)/gi;
+
+    let ifMatch;
+
+    while ((ifMatch = ifPattern.exec(trimmedExpression)) !== null) {
+        const argumentsString = ifMatch[1];
+
+        const argumentsList = argumentsString
+            .split(",")
+            .map((item) => item.trim());
+
+        const condition = argumentsList[0];
+
+        const comparisonMatch = condition.match(
+            /^(.+?)\s*(>=|<=|==|!=|>|<)\s*(.+)$/
+        );
+
+        if (!comparisonMatch) {
+            throw new Error(
+                "IF condition must contain a valid comparison operator."
+            );
+        }
+
+        const [, leftSide, operator, rightSide] = comparisonMatch;
+
+        // Prevent unsupported or repeated comparison operators
+        if (/[<>!=]/.test(leftSide) || /[<>!=]/.test(rightSide)) {
+            throw new Error(
+                "IF condition contains an unsupported comparison operator."
+            );
+        }
+    }
+
     return true;
 };
 
@@ -327,19 +456,44 @@ export const calculateFormula = (expression, values = {}) => {
 
 export { processFunctions };
 
-// Service to calculate a stored formula by its code
-export const calculateStoredFormula = async (code, values = {}) => {
-    const formula = await Formula.findOne({
+// Helper function to find an active formula by its code
+const findActiveFormula = async (code) => {
+    return Formula.findOne({
         code,
         active: true,
     });
+};
+
+// Service to calculate a stored formula by its code
+export const calculateStoredFormula = async (
+    code,
+    values = {},
+    calculationStack = []
+) => {
+    const formula = await findActiveFormula(code);
 
     if (!formula) {
         throw new Error(`Active formula not found: ${code}`);
     }
 
+    if (calculationStack.includes(code)) {
+        const dependencyPath = [...calculationStack, code].join(" → ");
+
+        throw new Error(
+            `Circular formula dependency detected: ${dependencyPath}`
+        );
+    }
+
+    calculationStack.push(code);
+
     for (const variable of formula.variables) {
-        if (!Object.prototype.hasOwnProperty.call(values, variable)) {
+        if (Object.prototype.hasOwnProperty.call(values, variable)) {
+            continue;
+        }
+
+        const dependency = await findActiveFormula(variable);
+
+        if (!dependency) {
             throw new Error(
                 `Missing required value for variable: ${variable}`
             );
@@ -347,14 +501,30 @@ export const calculateStoredFormula = async (code, values = {}) => {
     }
 
     for (const variable of formula.variables) {
-    const value = values[variable];
+        if (Object.prototype.hasOwnProperty.call(values, variable)) {
+            const value = values[variable];
 
-    if (typeof value !== "number" || !Number.isFinite(value)) {
-        throw new Error(
-            `Invalid value for variable: ${variable}`
-        );
+            if (typeof value !== "number" || !Number.isFinite(value)) {
+                throw new Error(
+                    `Invalid value for variable: ${variable}`
+                );
+            }
+
+            continue;
+        }
+
+        const dependency = await findActiveFormula(variable);
+
+        if (dependency) {
+            const dependencyResult = await calculateStoredFormula(
+                variable,
+                values,
+                calculationStack
+            );
+
+            values[variable] = dependencyResult.result;
+        }
     }
-}
 
     return calculateFormula(formula.expression, values);
 }; 

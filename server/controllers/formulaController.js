@@ -14,7 +14,7 @@ export const createFormula = async (req, res) => {
         } = req.body;
 
         validateFormulaExpression(expression);
-        
+
         const variables = extractVariables(expression);
 
         const formula = await Formula.create({
@@ -35,7 +35,18 @@ export const createFormula = async (req, res) => {
     } catch (error) {
         console.error("Create formula error:", error);
 
-        res.status(400).json({
+        if (error.code === 11000) {
+            const duplicateField = Object.keys(error.keyPattern || {})[0];
+            const duplicateValue = error.keyValue?.[duplicateField];
+
+            return res.status(409).json({
+                success: false,
+                message: "Formula code already exists.",
+                error: `A formula with code '${duplicateValue}' already exists.`,
+            });
+        }
+
+        return res.status(400).json({
             success: false,
             message: "Invalid formula data.",
             error: error.message,
@@ -107,6 +118,7 @@ export const updateFormula = async (req, res) => {
             expression,
             description,
             category,
+            active,
         } = req.body;
 
         const formula = await Formula.findById(id);
@@ -127,6 +139,7 @@ export const updateFormula = async (req, res) => {
         }
 
         if (expression !== undefined) {
+            validateFormulaExpression(expression);
             formula.expression = expression;
             formula.variables = extractVariables(expression);
         }
@@ -138,7 +151,13 @@ export const updateFormula = async (req, res) => {
         if (category !== undefined) {
             formula.category = category;
         }
-        formula.version += 1;
+        if (active !== undefined) {
+            formula.active = active;
+        }
+        if (expression !== undefined || name !== undefined || code !== undefined || description !== undefined || category !== undefined) {
+            formula.version += 1;
+        }
+
         await formula.save();
 
         res.status(200).json({
@@ -149,9 +168,20 @@ export const updateFormula = async (req, res) => {
     } catch (error) {
         console.error("Update formula error:", error);
 
-        res.status(500).json({
+        if (error.code === 11000) {
+            const duplicateField = Object.keys(error.keyPattern || {})[0];
+            const duplicateValue = error.keyValue?.[duplicateField];
+
+            return res.status(409).json({
+                success: false,
+                message: "Formula code already exists.",
+                error: `A formula with code '${duplicateValue}' already exists.`,
+            });
+        }
+
+        return res.status(400).json({
             success: false,
-            message: "Failed to update formula.",
+            message: "Invalid formula data.",
             error: error.message,
         });
     }
@@ -209,9 +239,16 @@ export const calculateStoredFormulaController = async (req, res) => {
             data: result,
         });
     } catch (error) {
-        console.error("Calculate formula error:", error);
+        console.error("Calculate stored formula error:", error);
 
-        res.status(400).json({
+        if (error.message.startsWith("Active formula not found:")) {
+            return res.status(404).json({
+                success: false,
+                message: error.message,
+            });
+        }
+
+        return res.status(400).json({
             success: false,
             message: error.message,
         });
