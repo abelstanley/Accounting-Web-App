@@ -15,6 +15,11 @@ const accountSchema = new mongoose.Schema(
       trim: true,
     },
 
+    isCashEquivalent: {
+      type: Boolean,
+      default: false,
+    },
+
     accountType: {
       type: String,
       required: true,

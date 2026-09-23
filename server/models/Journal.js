@@ -37,6 +37,13 @@ const journalSchema = new mongoose.Schema(
       trim: true,
     },
 
+    category: {
+      type: String,
+      enum: ["Operating", "Investing", "Financing"],
+      required: true,
+      default: "Operating",
+    },
+
     lines: {
       type: [journalLineSchema],
       validate: {

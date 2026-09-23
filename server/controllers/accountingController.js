@@ -39,7 +39,16 @@ export const postJournal = async (req, res, next) => {
     const session = await mongoose.startSession();
     try {
         session.startTransaction();
-        const { transactionDate, description, lines } = req.body;
+        const { transactionDate, description, lines, category } = req.body;
+
+        // Validate category — must be one of the allowed values
+        const validCategories = ["Operating", "Investing", "Financing"];
+        if (category && !validCategories.includes(category)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid category. Must be one of: ${validCategories.join(", ")}.`,
+            });
+        }
 
 
         // Validate that the journal entry has at least two lines
@@ -109,8 +118,10 @@ export const postJournal = async (req, res, next) => {
             transactionDate,
             description,
             lines,
+            category: category || "Operating", // Default to "Operating" if not provided
             status: "Posted",
             createdBy: req.user._id,
+
         };
 
         // Create the journal entry in the database
@@ -225,10 +236,12 @@ export const reverseJournal = async (req, res, next) => {
             transactionDate: new Date(),
             description: `Reversal of: ${journal.description}`,
             lines: reversalLines,
+            category: journal.category, // Keep the same category as the original journal
             status: "Posted",
             isReversal: true,
             reversedJournal: journal._id,
-            createdBy: req.user._id,
+            reversedBy: req.user._id,
+            createdBy: req.user._id
         };
 
         const [reversalJournal] = await Journal.create(
@@ -323,7 +336,7 @@ export const editJournal = async (req, res, next) => {
         }
 
         // Get the updated journal data from the request
-        const { transactionDate, description, lines } = req.body;
+        const { transactionDate, description, lines, category } = req.body;
 
         // Validate that the updated journal has at least two lines
         if (!lines || lines.length < 2) {
@@ -385,6 +398,18 @@ export const editJournal = async (req, res, next) => {
             0
         );
 
+
+        // Validate the category if provided
+
+        const validCategories = ["Operating", "Investing", "Financing"];
+        if (category && !validCategories.includes(category)) {
+            await session.abortTransaction();
+            return res.status(400).json({
+                success: false,
+                message: `Invalid category. Must be one of: ${validCategories.join(", ")}.`,
+            });
+        }
+
         // Ensure the updated journal is balanced
         if (totalDebit !== totalCredit) {
             await session.abortTransaction();
@@ -400,10 +425,11 @@ export const editJournal = async (req, res, next) => {
         journal.transactionDate = transactionDate;
         journal.description = description;
         journal.lines = lines;
+        if (category) journal.category = category; // only overwrite if a new value was sent
 
         await journal.save({ session });
 
-                // Commit the changes
+        // Commit the changes
         await session.commitTransaction();
 
         return res.status(200).json({
@@ -411,7 +437,7 @@ export const editJournal = async (req, res, next) => {
             message: "Draft journal updated successfully.",
             data: journal,
         });
-        
+
 
     } catch (error) {
         await session.abortTransaction();

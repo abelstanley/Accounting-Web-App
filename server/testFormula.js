@@ -1,21 +1,24 @@
-import { extractVariables } from "./services/formulaService.js";
-import { validateFormulaExpression } from "./services/formulaService.js";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import journalSchema from "../server/models/Journal.js";
 
-const expressions = [
-    "REVENUE - COST_OF_SALES",
-    "ROUND((REVENUE - COST_OF_SALES) / REVENUE * 100, 2)",
-    "IF(PROFIT > 0, PROFIT, 0)",
-    "REVENUE + @@@",
-    "SUM(REVENUE",
-];
+dotenv.config();
 
-for (const expression of expressions) {
-    try {
-        validateFormulaExpression(expression);
+const run = async () => {
+    await mongoose.connect(process.env.MONGODB_URI);
 
-        console.log(`VALID: ${expression}`);
-    } catch (error) {
-        console.log(`INVALID: ${expression}`);
-        console.log(`Reason: ${error.message}`);
-    }
-}
+    // Find every journal with no category set at all
+    const result = await journalSchema.updateMany(
+        { category: { $exists: false } },
+        { $set: { category: "Operating" } }
+    );
+
+    console.log(`Backfilled ${result.modifiedCount} journal entries with category "Operating".`);
+
+    await mongoose.disconnect();
+};
+
+run().catch((err) => {
+    console.error("Backfill failed:", err);
+    process.exit(1);
+});
