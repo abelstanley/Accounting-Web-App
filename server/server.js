@@ -9,13 +9,18 @@ import morgan from "morgan";
 import errorHandler from "./middleware/errorHandler.js";
 import seedAccounts from "./seeders/accountSeeder.js";
 import reportRoutes from "./routes/reportRoutes.js";
+import accountRoutes from "./routes/accountRoutes.js";
+import cors from "cors"; 
 
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+app.use(cors({
+  origin: "http://localhost:5173", // Vite's dev server
+  credentials: true, // only needed if you're using cookies for auth; harmless if not
+}));
 app.use(morgan("dev"));
 app.use(express.json());
 await connectDB();
@@ -27,6 +32,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/accounting", accountingRoutes);
 app.use("/api/formulas", formulaRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/accounts", accountRoutes);
 app.use(errorHandler);
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`); 
