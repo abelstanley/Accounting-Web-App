@@ -18,13 +18,15 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.use(cors({
-  origin: "http://localhost:5173", // Vite's dev server
+  origin: ["http://localhost:5173",
+    "https://accounting-web-app-f.onrender.com"
+  ], // Vite's dev server and your deployed frontend domain
   credentials: true, // only needed if you're using cookies for auth; harmless if not
 }));
 app.use(morgan("dev"));
 app.use(express.json());
 await connectDB();
-await seedAccounts();  
+await seedAccounts();
 
 // Use all routes
 app.use(routes);
@@ -35,5 +37,5 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/accounts", accountRoutes);
 app.use(errorHandler);
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`); 
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
