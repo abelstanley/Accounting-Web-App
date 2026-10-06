@@ -10,7 +10,7 @@ import errorHandler from "./middleware/errorHandler.js";
 import seedAccounts from "./seeders/accountSeeder.js";
 import reportRoutes from "./routes/reportRoutes.js";
 import accountRoutes from "./routes/accountRoutes.js";
-import cors from "cors"; 
+import cors from "cors";
 
 
 dotenv.config();

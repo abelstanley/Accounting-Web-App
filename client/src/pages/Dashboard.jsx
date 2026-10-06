@@ -88,9 +88,9 @@ function Dashboard() {
           <h1 style={{ margin: "0 0 0.35rem 0", fontSize: "1.8rem", color: "#1A1A1A" }}>
             Dashboard
           </h1>
-          <p style={{ margin: 0, color: "#6B6B6B", fontSize: "0.95rem" }}>
+          {/* <p style={{ margin: 0, color: "#6B6B6B", fontSize: "0.95rem" }}>
             Welcome back, <span style={{ color: "#1A1A1A", fontWeight: 600 }}>{user?.name}</span>
-          </p>
+          </p> */}
         </div>
 
         <div

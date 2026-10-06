@@ -446,3 +446,21 @@ export const editJournal = async (req, res, next) => {
         await session.endSession();
     }
 };
+
+// GET all journals, most recent first
+export const getAllJournals = async (req, res, next) => {
+  try {
+    const journals = await Journal.find()
+      .sort({ transactionDate: -1, createdAt: -1 })
+      .limit(20) // most recent 20, to keep the page fast
+      .populate("lines.account", "accountCode accountName");
+
+    res.status(200).json({
+      success: true,
+      message: "Journals retrieved successfully.",
+      data: journals,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

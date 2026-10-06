@@ -3,6 +3,7 @@ import {
     postJournal,
     reverseJournal,
     editJournal,
+    getAllJournals,
 } from "../controllers/accountingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -25,5 +26,8 @@ router.put(
     protect,
     editJournal
 );
+
+// GET /api/accounting/journals
+router.get("/journals", protect, getAllJournals);
 
 export default router;

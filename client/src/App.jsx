@@ -2,8 +2,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ChartOfAccounts from "./pages/ChartOfAccounts";
+import JournalEntry from "./pages/journalEntry";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
+import Ledger from "./pages/Ledger";
 
 function ComingSoon({ title }) {
   return <div style={{ padding: "2rem" }}><h1>{title}</h1><p>Coming soon.</p></div>;
@@ -35,7 +37,7 @@ function App() {
           path="/journal"
           element={
             <ProtectedRoute>
-              <Layout><ComingSoon title="Journal Entry" /></Layout>
+              <Layout><JournalEntry /></Layout>
             </ProtectedRoute>
           }
         />
@@ -43,7 +45,7 @@ function App() {
           path="/ledger"
           element={
             <ProtectedRoute>
-              <Layout><ComingSoon title="Ledger" /></Layout>
+              <Layout><Ledger /></Layout>
             </ProtectedRoute>
           }
         />
