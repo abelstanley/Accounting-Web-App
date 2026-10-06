@@ -24,7 +24,7 @@ app.use(cors({
 app.use(morgan("dev"));
 app.use(express.json());
 await connectDB();
-await seedAccounts(); 
+await seedAccounts();  
 
 // Use all routes
 app.use(routes);
