@@ -6,6 +6,7 @@ import JournalEntry from "./pages/journalEntry";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import Ledger from "./pages/Ledger";
+import Reports from "./pages/Reports";
 
 function ComingSoon({ title }) {
   return <div style={{ padding: "2rem" }}><h1>{title}</h1><p>Coming soon.</p></div>;
@@ -53,7 +54,7 @@ function App() {
           path="/reports"
           element={
             <ProtectedRoute>
-              <Layout><ComingSoon title="Reports" /></Layout>
+              <Layout><Reports /></Layout>
             </ProtectedRoute>
           }
         />
